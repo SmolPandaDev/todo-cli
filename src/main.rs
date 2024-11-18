@@ -6,6 +6,7 @@ mod get;
 mod delete;
 mod db;
 mod list;
+mod update;
 
 /// Here's my app!
 #[derive(Debug, Parser)]
@@ -28,6 +29,20 @@ enum Command {
         id: i32,
     },
 
+    /// Update a todo 
+    Update {
+        /// The todo you wish to update
+        id: i32,
+
+        /// The name you want to update to
+        #[clap(long, short, value_name = "name")]
+        name: Option<String>,
+
+        /// status you want to change to
+        #[clap(long, short, value_name = "status")]
+        status: Option<todo_cli_app::Status>,
+    },
+
     /// Delete a todo by it's ID
     Delete {
         id: i32,
@@ -35,7 +50,8 @@ enum Command {
 
     /// List all todos by status
     List {
-        status: Option<String>,
+        #[clap(value_enum)]
+        status: Option<todo_cli_app::Status>,
     }
 }
 
@@ -66,7 +82,8 @@ fn main() -> Result<()> {
             }
         },
         Command::Delete { id } => delete::delete_todo_by_id(&conn, id)?,
-        Command::List { status } => list::list_todos(&conn, status.as_deref())?
+        Command::List { status } => list::list_todos(&conn, status)?,
+        Command::Update { id, name, status } => update::update_todo(&conn, id, name, status)?,
     }
 
     Ok(())

@@ -1,9 +1,11 @@
 use rusqlite::{Connection, Result};
 
-pub fn list_todos(conn: &Connection, status: Option<&str>) -> Result<()> {
+use todo_cli_app::Status::{Complete, Pending};
+
+pub fn list_todos(conn: &Connection, status: Option<todo_cli_app::Status>) -> Result<()> {
     let query = match status {
-        Some("pending") => "SELECT id, name, status, created_at FROM todo WHERE status = 'pending'",
-        Some("complete") => "SELECT id, name, status, created_at FROM todo WHERE status = 'complete'",
+        Some(Pending) => "SELECT id, name, status, created_at FROM todo WHERE status = 'pending'",
+        Some(Complete) => "SELECT id, name, status, created_at FROM todo WHERE status = 'complete'",
         _ => "SELECT id, name, status, created_at FROM todo",
     };
 

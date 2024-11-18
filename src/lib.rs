@@ -1,5 +1,6 @@
+use rusqlite::{types::ToSqlOutput, Result, ToSql};
 
-#[derive(Debug)]
+#[derive(Debug, clap::ValueEnum, Clone)]
 pub enum Status {
     Pending,
     Complete,
@@ -20,5 +21,24 @@ impl Status {
             "complete" => Ok(Status::Complete),
             _ => Err(format!("Invalid status: {}", status_str)),
         }
+    }
+
+    pub fn to_string(&self) -> String {
+        match self {
+            Status::Pending => "pending".to_string(),
+            Status::Complete => "complete".to_string(),
+        }
+    }
+}
+
+impl ToSql for Status {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput> {
+        // You can store this as a string or an integer, depending on your choice.
+        // In this case, we store it as a string:
+        let status_str = match self {
+            Status::Pending => "pending",
+            Status::Complete => "complete",
+        };
+        Ok(ToSqlOutput::from(status_str))
     }
 }
