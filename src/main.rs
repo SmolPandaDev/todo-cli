@@ -1,134 +1,73 @@
-use rusqlite::{Connection, Error, Result};
+use clap::{ Parser, Subcommand};
+use rusqlite::{Connection, Result};
 
-use std::env;
-use std::fmt;
+mod add;
+mod get;
+mod delete;
+mod db;
+mod list;
 
-#[derive(Debug)]
-enum Status {
-    Pending,
-    Complete,
+/// Here's my app!
+#[derive(Debug, Parser)]
+#[clap(name = "todo-app", version)]
+pub struct App {
+    #[clap(subcommand)]
+    command: Command,
 }
 
-#[derive(Debug)]
-struct Todo {
-    id: i32,
-    name: String,
-    status: Status,
-    created_at: String,
-}
 
-impl Status {
-    fn from_str(status_str: &str) -> Result<Status, String> {
-        match status_str {
-            "pending" => Ok(Status::Pending),
-            "complete" => Ok(Status::Complete),
-            _ => Err(format!("Invalid status: {}", status_str)),
-        }
+#[derive(Debug, Subcommand)]
+enum Command {
+    /// Add a new todo
+    Add {
+        /// The name of the todo
+        name: String,
+    },
+    /// Fetch a todo item by its ID
+    Get {
+        id: i32,
+    },
+
+    /// Delete a todo by it's ID
+    Delete {
+        id: i32,
+    },
+
+    /// List all todos by status
+    List {
+        status: Option<String>,
     }
 }
+
+
 
 fn main() -> Result<()> {
+    let app = App::parse(); // Parses the CLI arguments automatically
 
     let db_path = "my-todos.sqlite";
-
-    // you often have to annotate the type of collection you want when using collect() as rust can't infer what you want!
-    let args: Vec<String> = env::args().collect();
-    println!("My TODO app!");
-
-    if args.len() < 2 {
-        eprintln!("Usage: todo <command> [args]");
-        return Ok(());
-    }
-
-    // program name is args[0]
-    let command = &args[1];
-
-    println!("Todo command: {command}");
-
     let conn = Connection::open(db_path)?;
 
     println!("Connected to SQLite database: {}", db_path);
 
-    create_table_if_not_exists(&conn)?;
+    db::create_table_if_not_exists(&conn)?;
 
-
-    match command.as_str() {
-        "get" => {
-            // get existing todo by id
-            let id = &args[2];
-    
-            match get_todo_by_id(&conn, id.parse().unwrap()) {
-                Ok(todo) => println!("Found TODO: {:?}", todo),
-                Err(e) => eprintln!("Error retrieving TODO: {}", e),
-            }
-
-        },
-
-        "add" => {
-            // add new todo
-
-            let name = &args[2];
-
-            // TODO: error handling
-            match conn.execute("INSERT INTO todo (name) VALUES (:name)", rusqlite::named_params! { ":name": name }) {
-                Ok(updated) => println!("added todo: {}", updated),
-                Err(err) => println!("failed to add todo: {}", err)
+    match app.command {
+        Command::Add { name } => add::add_todo(&conn, &name)?,
+        Command::Get { id } => {
+            match get::get_todo_by_id(&conn, id) {
+                Ok(todo) => {
+                    println!("Found TODO: {:?}", todo);
+                    return Ok(()) // Return `Ok(())` to ensure consistency
+                }
+                Err(e) => {
+                    eprintln!("Error retrieving TODO: {}", e);
+                    return Err(e)
+                }
             }
         },
-
-        "delete" => {
-            // delete todo by id
-            let id = &args[2];
-            delete_todo_by_id(&conn, id.parse().unwrap())?;
-        },
-
-        _ => {
-            eprint!("unknown command given")
-        }
-
+        Command::Delete { id } => delete::delete_todo_by_id(&conn, id)?,
+        Command::List { status } => list::list_todos(&conn, status.as_deref())?
     }
 
     Ok(())
-}
-
-fn create_table_if_not_exists(conn: &Connection) -> Result<usize, rusqlite::Error> {
-    let create_table_sql = "
-        CREATE TABLE IF NOT EXISTS todo (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'pending',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    ";
-
-    conn.execute(&create_table_sql, ())
-}
-
-fn get_todo_by_id(conn: &Connection, todo_id: i32) -> Result<Todo> {
-    let mut stmt = conn.prepare("SELECT id, name, status, created_at FROM todo WHERE id = ?1")?;
-    stmt.query_row([todo_id], |row| {
-
-        let status_str: String = row.get(2)?;
-
-        // I would like to handle this error rather than panic
-        let status = Status::from_str(&status_str).unwrap();
-
-        Ok(Todo {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            status,
-            created_at: row.get(3)?,
-        })
-    })
-}
-
-fn delete_todo_by_id(conn: &Connection, id: i32) -> Result<()> {
-    let rows_deleted = conn.execute("DELETE FROM todo WHERE id = ?1", [id])?;
-    println!("deleted todo with ID {}", id);
-
-    if rows_deleted > 0 {
-        Ok(())
-    } else {
-        Err(Error::QueryReturnedNoRows)
-    }
 }
