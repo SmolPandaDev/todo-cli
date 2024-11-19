@@ -52,6 +52,7 @@ enum Command {
     /// List all todos by status
     List {
         #[clap(value_enum)]
+        #[clap(long, short, value_name = "status")]
         status: Option<todo_cli_app::Status>,
     }
 }
