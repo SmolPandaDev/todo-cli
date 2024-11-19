@@ -1,13 +1,8 @@
 use clap::{ Parser, Subcommand};
 use rusqlite::{Connection, Result};
-use todo_cli_app::Status;
+use todo_cli_app::todo::{add_todo, delete_todo_by_id, get_todo_by_id, list_todos, update_todo};
 
-mod add;
-mod get;
-mod delete;
 mod db;
-mod list;
-mod update;
 
 /// Here's my app!
 #[derive(Debug, Parser)]
@@ -70,9 +65,9 @@ fn main() -> Result<()> {
     db::create_table_if_not_exists(&conn)?;
 
     match app.command {
-        Command::Add { name } => add::add_todo(&conn, &name)?,
+        Command::Add { name } => add_todo(&conn, &name)?,
         Command::Get { id } => {
-            match get::get_todo_by_id(&conn, id) {
+            match get_todo_by_id(&conn, id) {
                 Ok(todo) => {
                     println!("Found TODO: {:?}", todo);
                     return Ok(()) // Return `Ok(())` to ensure consistency
@@ -83,9 +78,9 @@ fn main() -> Result<()> {
                 }
             }
         },
-        Command::Delete { id } => delete::delete_todo_by_id(&conn, id)?,
-        Command::Update { id, name, status } => update::update_todo(&conn, &id, name.as_ref(), status.as_ref())?,
-        Command::List { status } => list::list_todos(&conn, status)?,
+        Command::Delete { id } => delete_todo_by_id(&conn, id)?,
+        Command::Update { id, name, status } => update_todo(&conn, &id, name.as_ref(), status.as_ref())?,
+        Command::List { status } => list_todos(&conn, status)?,
     }
 
     Ok(())
