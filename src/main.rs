@@ -1,5 +1,6 @@
 use clap::{ Parser, Subcommand};
 use rusqlite::{Connection, Result};
+use todo_cli_app::Status;
 
 mod add;
 mod get;
@@ -82,8 +83,8 @@ fn main() -> Result<()> {
             }
         },
         Command::Delete { id } => delete::delete_todo_by_id(&conn, id)?,
+        Command::Update { id, name, status } => update::update_todo(&conn, &id, name.as_ref(), status.as_ref())?,
         Command::List { status } => list::list_todos(&conn, status)?,
-        Command::Update { id, name, status } => update::update_todo(&conn, id, name, status)?,
     }
 
     Ok(())

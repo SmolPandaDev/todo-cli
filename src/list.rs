@@ -11,12 +11,12 @@ pub fn list_todos(conn: &Connection, status: Option<todo_cli_app::Status>) -> Re
 
     let mut stmt = conn.prepare(query)?;
     let todos = stmt.query_map([], |row| {
-        Ok((row.get::<_, i32>(0)?, row.get::<_, String>(1)?))
+        Ok((row.get::<_, i32>(0)?, row.get::<_, String>(1)?, row.get::<_,String>(2)?))
     })?;
 
     for todo in todos {
-        let (id, name) = todo?;
-        println!("{}: {}", id, name);
+        let (id, name, status) = todo?;
+        println!("{}: {} ({})", id, name, status);
     }
     Ok(())
 }
